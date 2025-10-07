@@ -1,5 +1,6 @@
 import consola from "consola"
 
+import { getExtraPrompt } from "~/lib/config"
 import {
   type ResponsesPayload,
   type ResponseInputContent,
@@ -282,31 +283,16 @@ const translateSystemPrompt = (
     return null
   }
 
-  const toolUsePrompt = `
-## Tool use
-- You have access to many tools. If a tool exists to perform a specific task, you MUST use that tool instead of running a terminal command to perform that task.
-### Bash tool
-When using the Bash tool, follow these rules:
-- always run_in_background set to false, unless you are running a long-running command (e.g., a server or a watch command).
-### BashOutput tool
-When using the BashOutput tool, follow these rules:
-- Only Bash Tool run_in_background set to true, Use BashOutput to read the output later
-### TodoWrite tool
-When using the TodoWrite tool, follow these rules:
-- Skip using the TodoWrite tool for tasks with three or fewer steps.
-- Do not make single-step todo lists.
-- When you made a todo, update it after having performed one of the sub-tasks that you shared on the todo list.
-## Special user requests
-- If the user makes a simple request (such as asking for the time) which you can fulfill by running a terminal command (such as ''date''), you should do so.`
+  const extraPrompt = getExtraPrompt()
 
   if (typeof system === "string") {
-    return system + toolUsePrompt
+    return system + extraPrompt
   }
 
   const text = system
     .map((block, index) => {
       if (index === 0) {
-        return block.text + toolUsePrompt
+        return block.text + extraPrompt
       }
       return block.text
     })
