@@ -1,6 +1,6 @@
 import consola from "consola"
 
-import { getExtraPrompt } from "~/lib/config"
+import { getExtraPromptForModel } from "~/lib/config"
 import {
   type ResponsesPayload,
   type ResponseInputContent,
@@ -61,7 +61,7 @@ export const translateAnthropicMessagesToResponsesPayload = (
   const responsesPayload: ResponsesPayload = {
     model: payload.model,
     input,
-    instructions: translateSystemPrompt(payload.system),
+    instructions: translateSystemPrompt(payload.system, payload.model),
     temperature: payload.temperature ?? null,
     top_p: payload.top_p ?? null,
     max_output_tokens: payload.max_tokens,
@@ -278,12 +278,13 @@ const createFunctionCallOutput = (
 
 const translateSystemPrompt = (
   system: string | Array<AnthropicTextBlock> | undefined,
+  model: string,
 ): string | null => {
   if (!system) {
     return null
   }
 
-  const extraPrompt = getExtraPrompt()
+  const extraPrompt = getExtraPromptForModel(model)
 
   if (typeof system === "string") {
     return system + extraPrompt

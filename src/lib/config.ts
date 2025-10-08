@@ -1,13 +1,15 @@
+import consola from "consola"
 import fs from "node:fs"
 
 import { PATHS } from "./paths"
 
 export interface AppConfig {
-  extraPrompt: string
+  extraPrompts?: Record<string, string>
 }
 
 const defaultConfig: AppConfig = {
-  extraPrompt: `
+  extraPrompts: {
+    "gpt-5-codex": `
 ## Tool use
 - You have access to many tools. If a tool exists to perform a specific task, you MUST use that tool instead of running a terminal command to perform that task.
 ### Bash tool
@@ -24,6 +26,7 @@ When using the TodoWrite tool, follow these rules:
 ## Special user requests
 - If the user makes a simple request (such as asking for the time) which you can fulfill by running a terminal command (such as 'date'), you should do so.
 `,
+  },
 }
 
 let cachedConfig: AppConfig | null = null
@@ -57,14 +60,9 @@ function readConfigFromDisk(): AppConfig {
       )
       return defaultConfig
     }
-    const parsed = JSON.parse(raw) as AppConfig
-    return parsed
-  } catch {
-    fs.writeFileSync(
-      PATHS.CONFIG_PATH,
-      `${JSON.stringify(defaultConfig, null, 2)}\n`,
-      "utf8",
-    )
+    return JSON.parse(raw) as AppConfig
+  } catch (error) {
+    consola.error("Failed to read config file, using default config", error)
     return defaultConfig
   }
 }
@@ -76,11 +74,7 @@ export function getConfig(): AppConfig {
   return cachedConfig
 }
 
-export function reloadConfig(): AppConfig {
-  cachedConfig = null
-  return getConfig()
-}
-
-export function getExtraPrompt(): string {
-  return getConfig().extraPrompt
+export function getExtraPromptForModel(model: string): string {
+  const config = getConfig()
+  return config.extraPrompts?.[model] ?? ""
 }
