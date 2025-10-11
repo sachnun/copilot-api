@@ -96,12 +96,7 @@ describe("translateResponsesStreamEvent tool calls", () => {
       partial_json: "[]}",
     })
 
-    const blockStop = events.find(
-      (event) => event.type === "content_block_stop",
-    )
-    expect(blockStop).toBeDefined()
-
-    expect(state.openBlocks.size).toBe(0)
+    expect(state.openBlocks.size).toBe(1)
     expect(state.functionCallStateByOutputIndex.size).toBe(0)
   })
 
@@ -139,12 +134,7 @@ describe("translateResponsesStreamEvent tool calls", () => {
         '{"todos":[{"content":"Review src/routes/responses/translation.ts"}]}',
     })
 
-    const blockStop = events.find(
-      (event) => event.type === "content_block_stop",
-    )
-    expect(blockStop).toBeDefined()
-
-    expect(state.openBlocks.size).toBe(0)
+    expect(state.openBlocks.size).toBe(1)
     expect(state.functionCallStateByOutputIndex.size).toBe(0)
   })
 })

@@ -535,6 +535,9 @@ const mapResponsesStopReason = (
   const { status, incomplete_details: incompleteDetails } = response
 
   if (status === "completed") {
+    if (response.output.some((item) => item.type === "function_call")) {
+      return "tool_use"
+    }
     return "end_turn"
   }
 

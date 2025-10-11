@@ -176,8 +176,6 @@ const handleOutputItemDone = (
     state.blockHasDelta.add(blockIndex)
   }
 
-  closeBlockIfOpen(state, blockIndex, events)
-
   return events
 }
 
@@ -232,7 +230,6 @@ const handleFunctionCallArgumentsDone = (
     state.blockHasDelta.add(blockIndex)
   }
 
-  closeBlockIfOpen(state, blockIndex, events)
   state.functionCallStateByOutputIndex.delete(outputIndex)
   return events
 }
@@ -340,8 +337,6 @@ const handleOutputTextDone = (
     })
   }
 
-  closeBlockIfOpen(state, blockIndex, events)
-
   return events
 }
 
@@ -421,9 +416,7 @@ const messageStart = (
         usage: {
           input_tokens: inputTokens,
           output_tokens: 0,
-          ...(inputCachedTokens !== undefined && {
-            cache_creation_input_tokens: inputCachedTokens,
-          }),
+          cache_read_input_tokens: inputCachedTokens ?? 0,
         },
       },
     },
@@ -449,6 +442,7 @@ const openTextBlockIfNeeded = (
   }
 
   if (!state.openBlocks.has(blockIndex)) {
+    closeOpenBlocks(state, events)
     events.push({
       type: "content_block_start",
       index: blockIndex,
@@ -480,6 +474,7 @@ const openThinkingBlockIfNeeded = (
   }
 
   if (!state.openBlocks.has(blockIndex)) {
+    closeOpenBlocks(state, events)
     events.push({
       type: "content_block_start",
       index: blockIndex,
@@ -508,13 +503,20 @@ const closeBlockIfOpen = (
   state.blockHasDelta.delete(blockIndex)
 }
 
-const closeAllOpenBlocks = (
+const closeOpenBlocks = (
   state: ResponsesStreamState,
   events: Array<AnthropicStreamEventData>,
 ) => {
   for (const blockIndex of state.openBlocks) {
     closeBlockIfOpen(state, blockIndex, events)
   }
+}
+
+const closeAllOpenBlocks = (
+  state: ResponsesStreamState,
+  events: Array<AnthropicStreamEventData>,
+) => {
+  closeOpenBlocks(state, events)
 
   state.functionCallStateByOutputIndex.clear()
 }
@@ -562,6 +564,7 @@ const openFunctionCallBlock = (
   const { blockIndex } = functionCallState
 
   if (!state.openBlocks.has(blockIndex)) {
+    closeOpenBlocks(state, events)
     events.push({
       type: "content_block_start",
       index: blockIndex,
