@@ -11,3 +11,7 @@ tests/
 *.md
 
 .eslintcache
+
+# Railway specific
+railway.toml
+RAILWAY.md

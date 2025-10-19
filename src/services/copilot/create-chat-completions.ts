@@ -22,10 +22,13 @@ export const createChatCompletions = async (
     ["assistant", "tool"].includes(msg.role),
   )
 
+  // Check if model is claude-sonnet-4.5 (should also be treated as agent)
+  const isClaudeSonnet45 = payload.model === "claude-sonnet-4.5"
+
   // Build headers and add X-Initiator
   const headers: Record<string, string> = {
     ...copilotHeaders(state, enableVision),
-    "X-Initiator": isAgentCall ? "agent" : "user",
+    "X-Initiator": isAgentCall || isClaudeSonnet45 ? "agent" : "user",
   }
 
   const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {

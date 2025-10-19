@@ -117,6 +117,12 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   serve({
     fetch: server.fetch as ServerHandler,
     port: options.port,
+    // Bun-specific options for longer timeouts
+    bun: {
+      // Disable request timeout (set to 0 or very high value)
+      // Default is 10 seconds, we set to 5 minutes for long streaming requests
+      idleTimeout: 300, // 5 minutes in seconds
+    },
   })
 }
 
