@@ -22,13 +22,15 @@ export const createChatCompletions = async (
     ["assistant", "tool"].includes(msg.role),
   )
 
-  // Check if model starts with "claude-" (should also be treated as agent)
+  // Check if model starts with "claude-" or is "gpt-5-codex" (should also be treated as agent)
   const isClaudeModel = payload.model.startsWith("claude-")
+  const isGpt5Codex = payload.model === "gpt-5-codex"
 
   // Build headers and add X-Initiator
   const headers: Record<string, string> = {
     ...copilotHeaders(state, enableVision),
-    "X-Initiator": isAgentCall || isClaudeModel ? "agent" : "user",
+    "X-Initiator":
+      isAgentCall || isClaudeModel || isGpt5Codex ? "agent" : "user",
   }
 
   const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
