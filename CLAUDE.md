@@ -58,11 +58,12 @@ Hono app with the following routes:
 /v1/embeddings          → OpenAI-compatible embeddings
 /v1/messages            → Anthropic-compatible messages endpoint
 /v1/messages/count_tokens → Token counting
+/v1/responses           → Native Copilot Responses API (most advanced interface)
 /usage                  → Usage/quota monitoring
 /token                  → Current Copilot token
 ```
 
-Routes without `/v1` prefix are also exposed for compatibility.
+Routes without `/v1` prefix (except `/v1/messages` and `/v1/responses`) are also exposed for compatibility.
 
 ### Core Flow
 
@@ -72,12 +73,15 @@ Routes without `/v1` prefix are also exposed for compatibility.
    - Copilot token auto-refreshes on interval
 
 2. **Request Translation** (`src/routes/`):
-   - **Anthropic → OpenAI**: `routes/messages/handler.ts` translates Anthropic Messages API to OpenAI format before calling Copilot
+   - **Anthropic → Responses API**: `routes/messages/handler.ts` uses Responses API when model supports it (more advanced)
+   - **Anthropic → OpenAI**: Falls back to translating Anthropic Messages API to OpenAI format via Chat Completions API
    - **Direct OpenAI**: `routes/chat-completions/handler.ts` passes through with minimal modification
+   - **Direct Responses**: `routes/responses/handler.ts` forwards native Responses API requests
 
 3. **Copilot API Calls** (`src/services/copilot/`):
-   - All Copilot API calls go through `create-chat-completions.ts`
+   - Two main APIs: `create-chat-completions.ts` (older) and `create-responses.ts` (newer, more capable)
    - Headers include auth token, VSCode version, account type, and X-Initiator (user vs agent)
+   - **X-Initiator header** (`lib/api-config.ts:resolveChatInitiator`): Set to "agent" if messages contain assistant/tool roles, or if using Claude/gpt-5-codex models; otherwise "user"
 
 ### State Management (`src/lib/state.ts`)
 
@@ -97,10 +101,17 @@ Global singleton state object holds:
 
 ### Translation Layers
 
-**Anthropic → OpenAI** (`routes/messages/`):
-- `non-stream-translation.ts`: Bidirectional translation for non-streaming requests/responses
-- `stream-translation.ts`: Translates OpenAI SSE chunks to Anthropic event stream format
-- `anthropic-types.ts`: Type definitions for Anthropic Messages API
+**Anthropic Messages API** has two translation paths (`routes/messages/`):
+
+1. **Via Responses API** (preferred when model supports it):
+   - `responses-translation.ts`: Bidirectional translation for non-streaming requests/responses
+   - `responses-stream-translation.ts`: Translates Responses API events to Anthropic event stream format
+
+2. **Via Chat Completions API** (fallback):
+   - `non-stream-translation.ts`: Bidirectional translation for non-streaming requests/responses
+   - `stream-translation.ts`: Translates OpenAI SSE chunks to Anthropic event stream format
+
+Type definitions: `anthropic-types.ts`
 
 ### GitHub Services (`services/github/`)
 
@@ -124,9 +135,10 @@ Uses Bun's built-in test runner. Place tests in `tests/` directory with `*.test.
 
 The `--account-type` flag changes the Copilot API endpoint:
 - **individual**: `api.githubcopilot.com`
-- **business/enterprise**: `api.individual.githubcopilot.com`
+- **business**: `api.business.githubcopilot.com`
+- **enterprise**: `api.enterprise.githubcopilot.com`
 
-See `lib/api-config.ts` for implementation details.
+See `lib/api-config.ts:copilotBaseUrl` for implementation details.
 
 ## Important Context
 
@@ -134,3 +146,4 @@ See `lib/api-config.ts` for implementation details.
 - **Token persistence**: GitHub token stored in `~/.local/share/copilot-api/` (use `lib/paths.ts` for path logic)
 - **VSCode version**: The proxy mimics VSCode to authenticate with Copilot (`services/get-vscode-version.ts`)
 - **Streaming**: Both streaming and non-streaming are supported. Response type determined by `stream` parameter in request
+- **Model endpoint support**: Each model has a `supported_endpoints` array. The `/v1/messages` handler checks if the model supports `/responses` and automatically uses the more advanced Responses API if available, otherwise falls back to Chat Completions API
