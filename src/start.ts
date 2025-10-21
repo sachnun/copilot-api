@@ -6,6 +6,7 @@ import consola from "consola"
 import { serve, type ServerHandler } from "srvx"
 import invariant from "tiny-invariant"
 
+import { setRotationThreshold } from "./lib/initiator-rotation"
 import { ensurePaths } from "./lib/paths"
 import { initProxyFromEnv } from "./lib/proxy"
 import { generateEnvScript } from "./lib/shell"
@@ -25,6 +26,7 @@ interface RunServerOptions {
   claudeCode: boolean
   showToken: boolean
   proxyEnv: boolean
+  initiatorRotation?: number
 }
 
 export async function runServer(options: RunServerOptions): Promise<void> {
@@ -46,6 +48,15 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   state.rateLimitSeconds = options.rateLimit
   state.rateLimitWait = options.rateLimitWait
   state.showToken = options.showToken
+  state.initiatorRotationThreshold = options.initiatorRotation
+
+  // Set initiator rotation threshold if provided
+  if (options.initiatorRotation !== undefined) {
+    setRotationThreshold(options.initiatorRotation)
+    consola.info(
+      `Initiator rotation enabled: forcing 1 user request every ${options.initiatorRotation} agent requests`,
+    )
+  }
 
   await ensurePaths()
   await cacheVSCodeVersion()
@@ -189,12 +200,25 @@ export const start = defineCommand({
       default: false,
       description: "Initialize proxy from environment variables",
     },
+    "initiator-rotation": {
+      alias: "i",
+      type: "string",
+      description:
+        "Force 1 user request every N agent requests (e.g., 300). Helps avoid abuse detection while using premium agent requests",
+    },
   },
   run({ args }) {
     const rateLimitRaw = args["rate-limit"]
     const rateLimit =
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       rateLimitRaw === undefined ? undefined : Number.parseInt(rateLimitRaw, 10)
+
+    const initiatorRotationRaw = args["initiator-rotation"]
+    const initiatorRotation =
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      initiatorRotationRaw === undefined ? undefined : (
+        Number.parseInt(initiatorRotationRaw, 10)
+      )
 
     return runServer({
       port: Number.parseInt(args.port, 10),
@@ -207,6 +231,7 @@ export const start = defineCommand({
       claudeCode: args["claude-code"],
       showToken: args["show-token"],
       proxyEnv: args["proxy-env"],
+      initiatorRotation,
     })
   },
 })

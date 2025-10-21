@@ -15,6 +15,9 @@ export interface State {
   // Rate limiting configuration
   rateLimitSeconds?: number
   lastRequestTimestamp?: number
+
+  // Initiator rotation configuration
+  initiatorRotationThreshold?: number
 }
 
 export const state: State = {

@@ -7,6 +7,7 @@ import {
   resolveChatInitiator,
 } from "~/lib/api-config"
 import { HTTPError } from "~/lib/error"
+import { applyInitiatorRotation } from "~/lib/initiator-rotation"
 import { state } from "~/lib/state"
 
 export const createChatCompletions = async (
@@ -21,7 +22,8 @@ export const createChatCompletions = async (
   )
 
   // Build headers and add X-Initiator
-  const initiator = resolveChatInitiator(payload)
+  const resolvedInitiator = resolveChatInitiator(payload)
+  const initiator = applyInitiatorRotation(resolvedInitiator)
 
   const headers = copilotHeaders(state, {
     vision: enableVision,
