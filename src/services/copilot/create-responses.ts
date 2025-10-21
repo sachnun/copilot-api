@@ -331,10 +331,7 @@ export const createResponses = async (
 ): Promise<CreateResponsesReturn> => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
-  const headers: Record<string, string> = {
-    ...copilotHeaders(state, vision),
-    "X-Initiator": initiator,
-  }
+  const headers = copilotHeaders(state, { vision, initiator })
 
   const response = await fetch(`${copilotBaseUrl(state)}/responses`, {
     method: "POST",

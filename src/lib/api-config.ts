@@ -2,6 +2,31 @@ import { randomUUID } from "node:crypto"
 
 import type { State } from "./state"
 
+export type CopilotHeaderOptions = {
+  vision?: boolean
+  initiator?: "agent" | "user"
+}
+
+export type ChatInitiatorPayload = {
+  model: string
+  messages: Array<{ role?: string | null }>
+}
+
+export const resolveChatInitiator = (
+  payload: ChatInitiatorPayload,
+): "agent" | "user" => {
+  const hasAgentRole = payload.messages.some((message) => {
+    const role =
+      typeof message.role === "string" ? message.role.toLowerCase() : ""
+    return role === "assistant" || role === "tool"
+  })
+
+  const isClaudeModel = payload.model.startsWith("claude-")
+  const isGpt5Codex = payload.model === "gpt-5-codex"
+
+  return hasAgentRole || isClaudeModel || isGpt5Codex ? "agent" : "user"
+}
+
 export const standardHeaders = () => ({
   "content-type": "application/json",
   accept: "application/json",
@@ -17,7 +42,12 @@ export const copilotBaseUrl = (state: State) =>
   state.accountType === "individual" ?
     "https://api.githubcopilot.com"
   : `https://api.${state.accountType}.githubcopilot.com`
-export const copilotHeaders = (state: State, vision: boolean = false) => {
+export const copilotHeaders = (
+  state: State,
+  options: CopilotHeaderOptions = {},
+) => {
+  const { vision = false, initiator } = options
+
   const headers: Record<string, string> = {
     Authorization: `Bearer ${state.copilotToken}`,
     "content-type": standardHeaders()["content-type"],
@@ -32,6 +62,7 @@ export const copilotHeaders = (state: State, vision: boolean = false) => {
   }
 
   if (vision) headers["copilot-vision-request"] = "true"
+  if (initiator) headers["X-Initiator"] = initiator
 
   return headers
 }

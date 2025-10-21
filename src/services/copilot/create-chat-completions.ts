@@ -1,7 +1,11 @@
 import consola from "consola"
 import { events } from "fetch-event-stream"
 
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
+import {
+  copilotHeaders,
+  copilotBaseUrl,
+  resolveChatInitiator,
+} from "~/lib/api-config"
 import { HTTPError } from "~/lib/error"
 import { state } from "~/lib/state"
 
@@ -16,22 +20,13 @@ export const createChatCompletions = async (
       && x.content?.some((x) => x.type === "image_url"),
   )
 
-  // Agent/user check for X-Initiator header
-  // Determine if any message is from an agent ("assistant" or "tool")
-  const isAgentCall = payload.messages.some((msg) =>
-    ["assistant", "tool"].includes(msg.role),
-  )
-
-  // Check if model starts with "claude-" or is "gpt-5-codex" (should also be treated as agent)
-  const isClaudeModel = payload.model.startsWith("claude-")
-  const isGpt5Codex = payload.model === "gpt-5-codex"
-
   // Build headers and add X-Initiator
-  const headers: Record<string, string> = {
-    ...copilotHeaders(state, enableVision),
-    "X-Initiator":
-      isAgentCall || isClaudeModel || isGpt5Codex ? "agent" : "user",
-  }
+  const initiator = resolveChatInitiator(payload)
+
+  const headers = copilotHeaders(state, {
+    vision: enableVision,
+    initiator,
+  })
 
   const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
     method: "POST",
