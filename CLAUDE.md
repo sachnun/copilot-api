@@ -147,3 +147,4 @@ See `lib/api-config.ts:copilotBaseUrl` for implementation details.
 - **VSCode version**: The proxy mimics VSCode to authenticate with Copilot (`services/get-vscode-version.ts`)
 - **Streaming**: Both streaming and non-streaming are supported. Response type determined by `stream` parameter in request
 - **Model endpoint support**: Each model has a `supported_endpoints` array. The `/v1/messages` handler checks if the model supports `/responses` and automatically uses the more advanced Responses API if available, otherwise falls back to Chat Completions API
+- **API Key Authentication**: Optional API key authentication can be enabled by setting the `API_KEY` environment variable. Supports both OpenAI format (`Authorization: Bearer <key>`) and Anthropic format (`x-api-key: <key>`). Authentication applies to essential POST endpoints only (chat completions, messages, embeddings, responses). See `middleware/auth.ts` for implementation.

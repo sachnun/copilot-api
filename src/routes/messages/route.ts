@@ -1,13 +1,14 @@
 import { Hono } from "hono"
 
 import { forwardError } from "~/lib/error"
+import { apiKeyAuth } from "~/middleware/auth"
 
 import { handleCountTokens } from "./count-tokens-handler"
 import { handleCompletion } from "./handler"
 
 export const messageRoutes = new Hono()
 
-messageRoutes.post("/", async (c) => {
+messageRoutes.post("/", apiKeyAuth, async (c) => {
   try {
     return await handleCompletion(c)
   } catch (error) {
@@ -15,7 +16,7 @@ messageRoutes.post("/", async (c) => {
   }
 })
 
-messageRoutes.post("/count_tokens", async (c) => {
+messageRoutes.post("/count_tokens", apiKeyAuth, async (c) => {
   try {
     return await handleCountTokens(c)
   } catch (error) {
