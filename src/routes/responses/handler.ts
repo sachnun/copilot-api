@@ -6,7 +6,6 @@ import { streamSSE } from "hono/streaming"
 import { awaitApproval } from "~/lib/approval"
 import { checkRateLimit } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
-import { setupPingInterval } from "~/lib/utils"
 import {
   createResponses,
   type ResponsesPayload,
@@ -53,7 +52,17 @@ export const handleResponses = async (c: Context) => {
   if (isStreamingRequested(payload) && isAsyncIterable(response)) {
     consola.debug("Forwarding native Responses stream")
     return streamSSE(c, async (stream) => {
-      const pingInterval = setupPingInterval(stream)
+      const pingInterval = setInterval(async () => {
+        try {
+          await stream.writeSSE({
+            event: "ping",
+            data: JSON.stringify({ timestamp: Date.now() }),
+          })
+        } catch (error) {
+          consola.warn("Failed to send ping:", error)
+          clearInterval(pingInterval)
+        }
+      }, 3000)
 
       try {
         for await (const chunk of response) {

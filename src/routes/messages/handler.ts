@@ -6,7 +6,6 @@ import { streamSSE } from "hono/streaming"
 import { awaitApproval } from "~/lib/approval"
 import { checkRateLimit } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
-import { setupPingInterval } from "~/lib/utils"
 import {
   createResponsesStreamState,
   translateResponsesStreamEvent,
@@ -85,8 +84,6 @@ const handleWithChatCompletions = async (
 
   consola.debug("Streaming response from Copilot")
   return streamSSE(c, async (stream) => {
-    const pingInterval = setupPingInterval(stream)
-
     const streamState: AnthropicStreamState = {
       messageStartSent: false,
       contentBlockIndex: 0,
@@ -94,30 +91,26 @@ const handleWithChatCompletions = async (
       toolCalls: {},
     }
 
-    try {
-      for await (const rawEvent of response) {
-        consola.debug("Copilot raw stream event:", JSON.stringify(rawEvent))
-        if (rawEvent.data === "[DONE]") {
-          break
-        }
-
-        if (!rawEvent.data) {
-          continue
-        }
-
-        const chunk = JSON.parse(rawEvent.data) as ChatCompletionChunk
-        const events = translateChunkToAnthropicEvents(chunk, streamState)
-
-        for (const event of events) {
-          consola.debug("Translated Anthropic event:", JSON.stringify(event))
-          await stream.writeSSE({
-            event: event.type,
-            data: JSON.stringify(event),
-          })
-        }
+    for await (const rawEvent of response) {
+      consola.debug("Copilot raw stream event:", JSON.stringify(rawEvent))
+      if (rawEvent.data === "[DONE]") {
+        break
       }
-    } finally {
-      clearInterval(pingInterval)
+
+      if (!rawEvent.data) {
+        continue
+      }
+
+      const chunk = JSON.parse(rawEvent.data) as ChatCompletionChunk
+      const events = translateChunkToAnthropicEvents(chunk, streamState)
+
+      for (const event of events) {
+        consola.debug("Translated Anthropic event:", JSON.stringify(event))
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify(event),
+        })
+      }
     }
   })
 }
@@ -142,51 +135,45 @@ const handleWithResponsesApi = async (
   if (responsesPayload.stream && isAsyncIterable(response)) {
     consola.debug("Streaming response from Copilot (Responses API)")
     return streamSSE(c, async (stream) => {
-      const pingInterval = setupPingInterval(stream)
-
       const streamState = createResponsesStreamState()
 
-      try {
-        for await (const chunk of response) {
-          const eventName = chunk.event
-          if (eventName === "ping") {
-            await stream.writeSSE({ event: "ping", data: "" })
-            continue
-          }
-
-          const data = chunk.data
-          if (!data) {
-            continue
-          }
-
-          consola.debug("Responses raw stream event:", data)
-
-          const events = translateResponsesStreamEvent(
-            JSON.parse(data) as ResponseStreamEvent,
-            streamState,
-          )
-          for (const event of events) {
-            const eventData = JSON.stringify(event)
-            consola.debug("Translated Anthropic event:", eventData)
-            await stream.writeSSE({
-              event: event.type,
-              data: eventData,
-            })
-          }
+      for await (const chunk of response) {
+        const eventName = chunk.event
+        if (eventName === "ping") {
+          await stream.writeSSE({ event: "ping", data: "" })
+          continue
         }
 
-        if (!streamState.messageCompleted) {
-          consola.warn(
-            "Responses stream ended without completion; sending fallback message_stop",
-          )
-          const fallback = { type: "message_stop" as const }
+        const data = chunk.data
+        if (!data) {
+          continue
+        }
+
+        consola.debug("Responses raw stream event:", data)
+
+        const events = translateResponsesStreamEvent(
+          JSON.parse(data) as ResponseStreamEvent,
+          streamState,
+        )
+        for (const event of events) {
+          const eventData = JSON.stringify(event)
+          consola.debug("Translated Anthropic event:", eventData)
           await stream.writeSSE({
-            event: fallback.type,
-            data: JSON.stringify(fallback),
+            event: event.type,
+            data: eventData,
           })
         }
-      } finally {
-        clearInterval(pingInterval)
+      }
+
+      if (!streamState.messageCompleted) {
+        consola.warn(
+          "Responses stream ended without completion; sending fallback message_stop",
+        )
+        const fallback = { type: "message_stop" as const }
+        await stream.writeSSE({
+          event: fallback.type,
+          data: JSON.stringify(fallback),
+        })
       }
     })
   }

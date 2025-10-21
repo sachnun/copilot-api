@@ -7,7 +7,6 @@ import { awaitApproval } from "~/lib/approval"
 import { checkRateLimit } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
 import { getTokenCount } from "~/lib/tokenizer"
-import { setupPingInterval } from "~/lib/utils"
 import { isNullish } from "~/lib/utils"
 import {
   createChatCompletions,
@@ -57,15 +56,9 @@ export async function handleCompletion(c: Context) {
 
   consola.debug("Streaming response")
   return streamSSE(c, async (stream) => {
-    const pingInterval = setupPingInterval(stream)
-
-    try {
-      for await (const chunk of response) {
-        consola.debug("Streaming chunk:", JSON.stringify(chunk))
-        await stream.writeSSE(chunk as SSEMessage)
-      }
-    } finally {
-      clearInterval(pingInterval)
+    for await (const chunk of response) {
+      consola.debug("Streaming chunk:", JSON.stringify(chunk))
+      await stream.writeSSE(chunk as SSEMessage)
     }
   })
 }
