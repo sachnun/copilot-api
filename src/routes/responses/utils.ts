@@ -3,23 +3,21 @@ import type {
   ResponsesPayload,
 } from "~/services/copilot/create-responses"
 
+import { resolveChatInitiator } from "~/lib/api-config"
+
 export const getResponsesRequestOptions = (
   payload: ResponsesPayload,
 ): { vision: boolean; initiator: "agent" | "user" } => {
   const vision = hasVisionInput(payload)
-  const initiator = hasAgentInitiator(payload) ? "agent" : "user"
+  const initiator = resolveChatInitiator({
+    model: payload.model,
+    messages: getPayloadItems(payload).map((item) => ({
+      role: "role" in item && typeof item.role === "string" ? item.role : null,
+    })),
+  })
 
   return { vision, initiator }
 }
-
-export const hasAgentInitiator = (payload: ResponsesPayload): boolean =>
-  getPayloadItems(payload).some((item) => {
-    if (!("role" in item) || !item.role) {
-      return true
-    }
-    const role = typeof item.role === "string" ? item.role.toLowerCase() : ""
-    return role === "assistant"
-  })
 
 export const hasVisionInput = (payload: ResponsesPayload): boolean => {
   const values = getPayloadItems(payload)
