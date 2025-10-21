@@ -15,6 +15,9 @@ export interface State {
   // Rate limiting configuration
   rateLimitSeconds?: number
   lastRequestTimestamp?: number
+
+  // Server uptime tracking
+  serverStartTime?: number
 }
 
 export const state: State = {

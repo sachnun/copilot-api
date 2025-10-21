@@ -114,6 +114,10 @@ export async function runServer(options: RunServerOptions): Promise<void> {
     `🌐 Usage Viewer: https://ericc-ch.github.io/copilot-api?endpoint=${serverUrl}/usage`,
   )
 
+  // Record server start time
+  // eslint-disable-next-line require-atomic-updates
+  state.serverStartTime = Date.now()
+
   serve({
     fetch: server.fetch as ServerHandler,
     port: options.port,
