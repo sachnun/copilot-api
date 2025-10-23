@@ -333,10 +333,13 @@ export const createResponses = async (
 
   const headers = copilotHeaders(state, { vision, initiator })
 
+  // Remove unsupported parameters before sending to Copilot API
+  const { store, ...supportedPayload } = payload
+
   const response = await fetch(`${copilotBaseUrl(state)}/responses`, {
     method: "POST",
     headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify(supportedPayload),
   })
 
   if (!response.ok) {
